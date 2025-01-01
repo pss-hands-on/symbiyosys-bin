@@ -28,10 +28,6 @@ else
     rls_version=1.0.0
 fi
 
-if test "x${BUILD_NUM}" != "x"; then
-    rls_version="${rls_version}.${BUILD_NUM}"
-fi
-
 release_dir="${root}/release/symbiyosys-${rls_version}"
 rm -rf ${release_dir}
 mkdir -p ${release_dir}
