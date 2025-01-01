@@ -35,10 +35,12 @@ jobs:
               env:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 BUILD_NUM: ${{ github.run_id }}
+                CI_BUILD: 1
               run: >
                 docker run --rm
                 --volume "$(pwd):/io"
                 --env BUILD_NUM
+                --env CI_BUILD
                 --workdir /io
                 quay.io/pypa/manylinux2014_x86_64
                 /io/scripts/build.sh
