@@ -22,7 +22,11 @@ if test ! -d py; then
 fi
 
 proj=$(pwd)
-rls_version=1.0.0
+if test "x${sby_version}" != "x"; then
+    rls_version=${sby_version}
+else
+    rls_version=1.0.0
+fi
 
 if test "x${BUILD_NUM}" != "x"; then
     rls_version="${rls_version}.${BUILD_NUM}"

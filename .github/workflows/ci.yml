@@ -28,6 +28,7 @@ jobs:
                 echo "bwz_latest_rls: ${bwz_latest_rls}"
                 echo "sby_latest_rls: ${sby_latest_rls}"
                 sby_version=$(echo $sby_latest_rls | sed -e 's/^v//')
+                sby_version="0.48"
 
                 echo "bwz_latest_rls=${bwz_latest_rls}" >> ${GITHUB_OUTPUT}
                 echo "sby_version=${sby_version}.${BUILD_NUM}" >> ${GITHUB_OUTPUT}
@@ -36,11 +37,13 @@ jobs:
                 GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                 BUILD_NUM: ${{ github.run_id }}
                 CI_BUILD: 1
+                sby_version: ${{ steps.is_needed.outputs.sby_version }}
               run: >
                 docker run --rm
                 --volume "$(pwd):/io"
                 --env BUILD_NUM
                 --env CI_BUILD
+                --env sby_version
                 --workdir /io
                 quay.io/pypa/manylinux2014_x86_64
                 /io/scripts/build.sh
