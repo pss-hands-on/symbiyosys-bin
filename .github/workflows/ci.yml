@@ -1,0 +1,107 @@
+name: CI
+on:
+  push:
+  workflow_dispatch:
+  schedule:
+    # Every Sunday at 12PM UTC
+    - cron: "0 12 * * 0"
+
+jobs:
+    ci-linux:
+        runs-on: 'ubuntu-latest'
+        steps:
+            - uses: actions/checkout@v4
+            - name: Install Deps
+              run: |
+                sudo apt-get install autoconf bison flex libfl-dev help2man
+            - name: check_is_needed
+              id: is_needed
+              env:
+                BUILD_NUM: ${{ github.run_id }}
+              run: |
+                bwz_latest_rls=$(curl -s -L \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    https://api.github.com/repos/bitwuzla/bitwuzla/releases/latest | \
+                    jq ".tag_name" | sed -e 's/\"//g')
+                sby_latest_rls=$(curl -s -L \
+                    -H "Accept: application/vnd.github+json" \
+                    -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+                    -H "X-GitHub-Api-Version: 2022-11-28" \
+                    https://api.github.com/repos/YosysHQ/sby/git/refs/tags | \
+                    jq ".[].ref" | sed -e's%refs/tags/%%' -e 's/\"//g'| sort | tail -n 1/
+                echo "bwz_latest_rls: ${bwz_latest_rls}"
+                echo "sby_latest_rls: ${sby_latest_rls}"
+                sby_version=$(echo $sby_latest_rls | sed -e 's/^v//')
+
+                echo "bwz_latest_rls=${bwz_latest_rls}" >> ${GITHUB_OUTPUT}
+                echo "sby_version=${sby_version}.${BUILD_NUM}" >> ${GITHUB_OUTPUT}
+            - name: build
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                BUILD_NUM: ${{ github.run_id }}
+              run: >
+                docker run --rm
+                --volume "$(pwd):/io"
+                --env BUILD_NUM
+                --workdir /io
+                quay.io/pypa/manylinux2014_x86_64
+                /io/scripts/build.sh
+            - name: Create Release
+              id: create_release
+              uses: actions/create-release@v1
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+                BUILD_NUM: ${{ github.run_id }}
+              with:
+                tag_name: "v${{ steps.is_needed.outputs.sby_version }}"
+                release_name: "Release ${{ steps.is_needed.outputs.sby_version }}"
+                body: |
+                  Build of Symbiyosys ${{ steps.is_needed.outputs.sby_version }}
+                draft: false
+                prerelease: false
+            - name: Upload Files
+              uses: actions/upload-release-asset@v1
+              env:
+                GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                BUILD_NUM: ${{ github.run_id }}
+              with:
+                upload_url: ${{ steps.create_release.outputs.upload_url }}
+                asset_path: "./release/symbiyosys-manylinux-x64-${{ steps.is_needed.outputs.sby_version }}.tar.gz"
+                asset_name: "symbiyoysy-manylinux-x64-${{ steps.is_needed.outputs.sby_version }}.tar.gz"
+                asset_content_type: application/gzip
+    # ci-windows:
+    #     runs-on: windows-latest
+    #     steps:
+    #         - uses: msys2/setup-msys2@v2
+    #           with:
+    #             update: true
+    #             install: >-
+    #                 gcc
+    #                 flex
+    #                 bison
+    #                 autotools
+    #                 help2man
+    #                 python3
+    #         - uses: actions/checkout@v4
+    #         - name: Download source
+    #           shell: msys2 {0}
+    #           run: |
+    #             cwd=$(pwd)
+    #             inst=$cwd/verilator-windows-64
+    #             ./scripts/build.sh
+    #             wget https://github.com/verilator/verilator/archive/refs/tags/v5.030.tar.gz
+    #             tar xvf v5.030.tar.gz
+    #             cd verilator-5.030
+    #             autoconf
+    #             ./configure --prefix=$inst
+    #             make -j$(nproc)
+    #             make install
+    #             cd $cwd
+    #             cp -r $inst/share/verilator/include $inst
+    #             cp $inst/share/verilator/bin/verilator_includer $inst/bin
+
+
+
+
