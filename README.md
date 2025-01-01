@@ -1,2 +1,2 @@
-# symbiyosysi-bin
+# symbiyosys-bin
 Binary build of the Symbiyosys tool, along with solvers
